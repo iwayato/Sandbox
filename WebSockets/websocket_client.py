@@ -36,7 +36,6 @@ class WebSocketClient:
                     "type": "client_message"
                 }
                 await self.websocket.send(json.dumps(msg_data))
-                print(f"Sent: {message}")
             except websockets.exceptions.ConnectionClosed:
                 print("Connection closed, cannot send message")
                 self.running = False
@@ -72,12 +71,12 @@ class WebSocketClient:
         
         # Handle user input in main loop
         try:
+            print("Enter message (or 'quit' to exit):")
             while self.running:
                 try:
+                    
                     # Use asyncio to handle input without blocking
-                    message = await asyncio.get_event_loop().run_in_executor(
-                        None, input, "Enter message (or 'quit' to exit): "
-                    )
+                    message = await asyncio.get_event_loop().run_in_executor(None, input)
                     
                     if message.lower() == 'quit':
                         self.running = False
