@@ -28,7 +28,7 @@ class WebSocketClient:
     
     async def send_message(self, message):
         """Send message to server"""
-        if self.websocket and not self.websocket.closed:
+        if self.websocket:
             try:
                 msg_data = {
                     "message": message,
@@ -37,6 +37,9 @@ class WebSocketClient:
                 }
                 await self.websocket.send(json.dumps(msg_data))
                 print(f"Sent: {message}")
+            except websockets.exceptions.ConnectionClosed:
+                print("Connection closed, cannot send message")
+                self.running = False
             except Exception as e:
                 print(f"Error sending message: {e}")
     

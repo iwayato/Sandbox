@@ -39,7 +39,7 @@ class AdvancedWebSocketClient:
     
     async def send_message(self, message):
         """Send message to server with error handling"""
-        if not self.websocket or self.websocket.closed:
+        if not self.websocket:
             print("Not connected to server")
             return False
             
@@ -52,6 +52,9 @@ class AdvancedWebSocketClient:
             await self.websocket.send(json.dumps(msg_data))
             print(f"✓ Sent: {message}")
             return True
+        except websockets.exceptions.ConnectionClosed:
+            print("✗ Connection closed, cannot send message")
+            return False
         except Exception as e:
             print(f"✗ Error sending message: {e}")
             return False
@@ -60,7 +63,7 @@ class AdvancedWebSocketClient:
         """Listen for messages with auto-reconnection"""
         while self.running:
             try:
-                if not self.websocket or self.websocket.closed:
+                if not self.websocket:
                     print("Connection lost, attempting to reconnect...")
                     if not await self.connect_to_server():
                         break
@@ -76,10 +79,12 @@ class AdvancedWebSocketClient:
                 print("Server connection closed")
                 if self.running:
                     print("Attempting to reconnect...")
+                    self.websocket = None
                     await asyncio.sleep(self.reconnect_delay)
             except Exception as e:
                 print(f"Error in message listener: {e}")
                 if self.running:
+                    self.websocket = None
                     await asyncio.sleep(self.reconnect_delay)
     
     def handle_server_message(self, data):
