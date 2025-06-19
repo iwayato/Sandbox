@@ -1,7 +1,7 @@
 import asyncio
 import websockets
 import json
-import threading
+# import threading  # No longer needed
 import sys
 from datetime import datetime
 
@@ -59,37 +59,41 @@ class WebSocketClient:
             print(f"Error listening for messages: {e}")
             self.running = False
     
-    def input_handler(self):
-        """Handle user input in a separate thread"""
-        while self.running:
-            try:
-                message = input("Enter message (or 'quit' to exit): ")
-                if message.lower() == 'quit':
-                    self.running = False
-                    break
-                
-                # Send message asynchronously
-                asyncio.create_task(self.send_message(message))
-            except EOFError:
-                break
-            except Exception as e:
-                print(f"Input error: {e}")
-    
     async def run_client(self):
         """Run the WebSocket client"""
         if not await self.connect_to_server():
             return
         
-        # Start input handler in separate thread
-        input_thread = threading.Thread(target=self.input_handler, daemon=True)
-        input_thread.start()
+        # Start listening for messages in background
+        listen_task = asyncio.create_task(self.listen_for_messages())
         
-        # Listen for messages
-        await self.listen_for_messages()
-        
-        # Cleanup
-        if self.websocket:
-            await self.websocket.close()
+        # Handle user input in main loop
+        try:
+            while self.running:
+                try:
+                    # Use asyncio to handle input without blocking
+                    message = await asyncio.get_event_loop().run_in_executor(
+                        None, input, "Enter message (or 'quit' to exit): "
+                    )
+                    
+                    if message.lower() == 'quit':
+                        self.running = False
+                        break
+                    
+                    await self.send_message(message)
+                    
+                except EOFError:
+                    self.running = False
+                    break
+                except Exception as e:
+                    print(f"Input error: {e}")
+                    break
+        finally:
+            # Cleanup
+            self.running = False
+            listen_task.cancel()
+            if self.websocket:
+                await self.websocket.close()
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
